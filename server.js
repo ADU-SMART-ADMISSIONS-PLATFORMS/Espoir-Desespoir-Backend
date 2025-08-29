@@ -70,28 +70,20 @@ let server;
 
 (async () => {
   try {
-    await initDb(); // essaie de connecter la DB
-
+    await initDb(); // essaie DB
     server = app.listen(PORT, () => {
       console.log(`✅ Serveur démarré sur le port ${PORT}`);
     });
   } catch (err) {
-    // IMPORTANT : log complet, sans filtrer
-    console.error('❌ Impossible de démarrer le serveur (boot) :', err && (err.stack || err));
-    // On démarre quand même le serveur pour voir /debug/env depuis Railway
+    console.error('❌ Impossible de démarrer le serveur (boot) :');
+    console.error(err);         // <== affiche l’objet entier
+    console.error(err.stack);   // <== affiche la stack complète
+    console.error(JSON.stringify(err, null, 2)); // <== affiche même en JSON
+
+    // démarre quand même pour debug
     server = app.listen(PORT, () => {
-      console.warn(`⚠️ Serveur démarré SANS DB sur le port ${PORT} pour debug.`);
-      console.warn('👉 Ouvre /debug/env et /health pour diagnostiquer.');
+      console.warn(`⚠️ Serveur lancé SANS DB sur le port ${PORT} (debug)`);
+      console.warn('👉 Va sur /debug/env et /health pour diagnostiquer.');
     });
   }
 })();
-
-// Arrêt propre
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Arrêt...');
-  try {
-    await closeDb();
-    console.log('✅ Pool MySQL fermé');
-  } catch (_) {}
-  if (server) server.close(() => process.exit(0));
-});
