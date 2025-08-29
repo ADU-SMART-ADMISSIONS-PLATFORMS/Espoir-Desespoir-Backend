@@ -46,9 +46,12 @@ app.get('/', (req, res) => {
 });
 
 // ✅ Lancer serveur SEULEMENT si la DB est OK
+
+let db; // déclaration globale
+
 (async () => {
   try {
-    const db = await initDb(); // connexion MySQL Railway
+    db = await initDb(); // on l’affecte ici
     console.log("✅ Base de données connectée");
 
     app.listen(PORT, () => {
