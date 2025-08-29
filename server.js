@@ -58,12 +58,9 @@ let db; // déclaration globale
       console.log(`✅ Serveur backend lancé sur http://localhost:${PORT}`);
       console.log(`📁 Fichiers statiques: http://localhost:${PORT}/uploads/`);
     });
- } catch (err) {
+} catch (err) {
   console.error("❌ Impossible de démarrer le serveur :");
-  console.error("Type :", typeof err);
-  console.error("Message :", err.message);
-  console.error("Stack :", err.stack);
-  console.error("Complet :", err);
+  console.error(err || "Erreur inconnue");
   process.exit(1);
 }
 })();
