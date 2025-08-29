@@ -58,10 +58,14 @@ let db; // déclaration globale
       console.log(`✅ Serveur backend lancé sur http://localhost:${PORT}`);
       console.log(`📁 Fichiers statiques: http://localhost:${PORT}/uploads/`);
     });
-  } catch (err) {
-    console.error("❌ Impossible de démarrer le serveur :", err);
-    process.exit(1); // on arrête le serveur si la DB échoue
-  }
+ } catch (err) {
+  console.error("❌ Impossible de démarrer le serveur :");
+  console.error("Type :", typeof err);
+  console.error("Message :", err.message);
+  console.error("Stack :", err.stack);
+  console.error("Complet :", err);
+  process.exit(1);
+}
 })();
 
 // ✅ Fermer proprement
