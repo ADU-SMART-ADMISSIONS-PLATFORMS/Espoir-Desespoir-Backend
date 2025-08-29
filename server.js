@@ -59,7 +59,7 @@ let db; // déclaration globale
       console.log(`📁 Fichiers statiques: http://localhost:${PORT}/uploads/`);
     });
   } catch (err) {
-    console.error("❌ Impossible de démarrer le serveur :", err.message);
+    console.error("❌ Impossible de démarrer le serveur :", err);
     process.exit(1); // on arrête le serveur si la DB échoue
   }
 })();
