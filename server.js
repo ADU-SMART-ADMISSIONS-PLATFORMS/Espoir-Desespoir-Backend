@@ -1,76 +1,97 @@
+// server.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
-const { initDb } = require('./models/db'); // ✅ importer la fonction d’init
+
+const { initDb, getPool, closeDb } = require('./models/db');
+
 const authRoutes = require('./routes/authRoutes');
 const programRoutes = require('./routes/programRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 5000; // ✅ variable d’environnement
+const PORT = process.env.PORT || 5000;
+
+// CORS
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+];
+if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
 
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    process.env.FRONTEND_URL // ← mets ça dans ton .env
-  ],
-  credentials: true
+  origin: allowedOrigins,
+  credentials: true,
 }));
 
 app.use(bodyParser.json());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ✅ Routes
+// Routes API
 app.use('/api/auth', authRoutes);
 app.use('/api/programs', programRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// ✅ Route test
+// Ping simple
 app.get('/', (req, res) => {
+  res.json({ ok: true, service: 'API ADU Admissions' });
+});
+
+// Endpoints de debug (temporaires – à supprimer ensuite)
+app.get('/debug/env', (req, res) => {
   res.json({
-    message: 'API ADU Admissions - Serveur fonctionnel',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      auth: '/api/auth/*',
-      programs: '/api/programs',
-      applications: '/api/applications',
-      docs: '/uploads/*'
-    }
+    PORT: process.env.PORT || '(non défini)',
+    FRONTEND_URL: process.env.FRONTEND_URL || '(non défini)',
+    DB_HOST: process.env.DB_HOST || process.env.MYSQLHOST || '(non défini)',
+    DB_PORT: process.env.DB_PORT || process.env.MYSQLPORT || '(non défini)',
+    DB_USER: process.env.DB_USER || process.env.MYSQLUSER || '(non défini)',
+    DB_NAME: process.env.DB_NAME || process.env.MYSQLDATABASE || '(non défini)',
+    DB_SSL: process.env.DB_SSL || 'false',
   });
 });
 
-// ✅ Lancer serveur SEULEMENT si la DB est OK
+app.get('/health', async (_req, res) => {
+  try {
+    const pool = getPool();
+    await pool.query('SELECT 1');
+    res.json({ db: 'up' });
+  } catch (e) {
+    res.status(500).json({ db: 'down', error: e && (e.message || e) });
+  }
+});
 
-let db; // déclaration globale
+let server;
 
 (async () => {
   try {
-    db = await initDb(); // on l’affecte ici
-    console.log("✅ Base de données connectée");
+    await initDb(); // essaie de connecter la DB
 
-    app.listen(PORT, () => {
-      console.log(`✅ Serveur backend lancé sur http://localhost:${PORT}`);
-      console.log(`📁 Fichiers statiques: http://localhost:${PORT}/uploads/`);
+    server = app.listen(PORT, () => {
+      console.log(`✅ Serveur démarré sur le port ${PORT}`);
     });
-} catch (err) {
-  console.error("❌ Impossible de démarrer le serveur :");
-  console.error(err || "Erreur inconnue");
-  process.exit(1);
-}
+  } catch (err) {
+    // IMPORTANT : log complet, sans filtrer
+    console.error('❌ Impossible de démarrer le serveur (boot) :', err && (err.stack || err));
+    // On démarre quand même le serveur pour voir /debug/env depuis Railway
+    server = app.listen(PORT, () => {
+      console.warn(`⚠️ Serveur démarré SANS DB sur le port ${PORT} pour debug.`);
+      console.warn('👉 Ouvre /debug/env et /health pour diagnostiquer.');
+    });
+  }
 })();
 
-// ✅ Fermer proprement
+// Arrêt propre
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Arrêt du serveur...');
-  if (db && db.end) {
-    await db.end();
-    console.log('✅ Connexion MySQL fermée');
-  }
-  process.exit(0);
+  console.log('\n🛑 Arrêt...');
+  try {
+    await closeDb();
+    console.log('✅ Pool MySQL fermé');
+  } catch (_) {}
+  if (server) server.close(() => process.exit(0));
 });
