@@ -1,29 +1,35 @@
 const mysql = require('mysql2/promise');
-const fs = require('fs');
 require('dotenv').config();
 
-// Charger le script SQL (optionnel si tu veux créer tes tables automatiquement)
-const initScript = fs.existsSync("init.sql") ? fs.readFileSync("init.sql", "utf-8") : null;
-
 async function initDb() {
-  const connection = await mysql.createConnection({
-    host: process.env.MYSQLHOST,
-    user: process.env.MYSQLUSER,
-    password: process.env.MYSQLPASSWORD,
-    database: process.env.MYSQLDATABASE,
-    port: process.env.MYSQLPORT,
-    multipleStatements: true
-  });
+  try {
+    console.log("📡 Tentative de connexion MySQL avec les variables :");
+    console.log({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      database: process.env.DB_NAME,
+      port: process.env.DB_PORT,
+    });
 
-  console.log("✅ Connecté à la base MySQL Railway");
+    const connection = await mysql.createConnection({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      port: process.env.DB_PORT,
+      multipleStatements: true,
+      ssl: {
+        rejectUnauthorized: false
+      }
+    });
 
-  if (initScript) {
-    await connection.query(initScript);
-    console.log("✅ Script init.sql exécuté");
+    console.log("✅ Connecté à la base MySQL Railway");
+    return connection;
+
+  } catch (err) {
+    console.error("🔥 ERREUR initDb :", err);  // <= affiche l’erreur brute
+    throw err; // on renvoie pour que server.js stoppe
   }
-
-  return connection;
 }
 
-// ✅ Exporter la fonction pour pouvoir l’utiliser dans server.js
 module.exports = { initDb };
