@@ -1,19 +1,29 @@
-const mysql = require('mysql2');
+const mysql = require('mysql2/promise');
+const fs = require('fs');
+require('dotenv').config();
 
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'adu_admission2'
-});
+// Charger le script SQL (optionnel si tu veux créer tes tables automatiquement)
+const initScript = fs.existsSync("init.sql") ? fs.readFileSync("init.sql", "utf-8") : null;
 
-db.connect(err => {
-  if (err) {
-    console.error('Erreur de connexion à la base de données:', err);
-    process.exit(1);
-  } else {
-    console.log('✅ Connecté à la base de données MySQL');
+async function initDb() {
+  const connection = await mysql.createConnection({
+    host: process.env.MYSQLHOST,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE,
+    port: process.env.MYSQLPORT,
+    multipleStatements: true
+  });
+
+  console.log("✅ Connecté à la base MySQL Railway");
+
+  if (initScript) {
+    await connection.query(initScript);
+    console.log("✅ Script init.sql exécuté");
   }
-});
 
-module.exports = db;
+  return connection;
+}
+
+// ✅ Exporter la fonction pour pouvoir l’utiliser dans server.js
+module.exports = { initDb };
